@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Metadados lidos pelo WallpaperManagerService do Android/One UI.
+     settingsActivity = tela aberta pelo botão de engrenagem na prévia
+     do sistema. Precisa ser o nome TOTALMENTE qualificado. -->
+<wallpaper xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/wallpaper_description"
+    android:settingsActivity="com.hub.livewallpaper.ui.SettingsActivity"
+    android:thumbnail="@drawable/wallpaper_thumb" />

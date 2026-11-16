@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AuroraHub</string>
+    <string name="wallpaper_label">AuroraHub · Live Wallpapers</string>
+    <string name="wallpaper_description">Coleção de papéis de parede animados inspirados em OxygenOS, iOS e ColorOS. Preenchimento total da tela (center-crop), sem bordas pretas.</string>
+
+    <string name="gallery_title">Papéis de parede</string>
+    <string name="gallery_subtitle">%1$d animações · preenchimento 19:9 sem bordas</string>
+    <string name="apply">Aplicar</string>
+    <string name="apply_both">Aplicar na tela inicial e de bloqueio</string>
+    <string name="open_settings">Ajustes de renderização</string>
+    <string name="settings_title">Ajustes</string>
+    <string name="preview_live">Prévia ao vivo</string>
+
+    <string name="scale_mode">Modo de escala</string>
+    <string name="scale_fill">Preencher (center-crop)</string>
+    <string name="scale_fit">Ajustar (com bordas)</string>
+    <string name="speed">Velocidade da animação</string>
+    <string name="overscan">Overscan (zoom de segurança)</string>
+    <string name="brightness">Brilho</string>
+    <string name="saturation">Saturação</string>
+    <string name="grain">Granulação</string>
+    <string name="quality">Qualidade de renderização</string>
+    <string name="fps">Limite de FPS</string>
+    <string name="mute_video">Silenciar áudio do vídeo</string>
+    <string name="pause_battery_saver">Pausar com economia de bateria</string>
+    <string name="reset">Restaurar padrões</string>
+    <string name="randomize">Surpreenda-me</string>
+
+    <string name="applied_ok">Papel de parede aplicado: %1$s</string>
+    <string name="applied_chooser">Escolha “AuroraHub” na lista e toque em “Definir papel de parede”.</string>
+    <string name="applied_fail">Não foi possível abrir o seletor de papéis de parede deste aparelho.</string>
+    <string name="video_missing">Vídeo não encontrado em assets — usando animação procedural equivalente.</string>
+</resources>

@@ -1,0 +1,31 @@
+PASTA DE VÍDEOS  (assets/wallpapers)
+====================================
+
+Qualquer arquivo .mp4 colocado aqui aparece automaticamente na galeria do
+AuroraHub: Catalog.all(context) varre esta pasta em tempo de execução e cria
+um item por arquivo que ainda não esteja no catálogo embutido.
+
+RECOMENDAÇÕES PARA O GALAXY S10 (1440 x 3040, 19:9)
+--------------------------------------------------
+· Codec ........ H.264 (AVC), profile High, nível 4.2 ou menor
+· Pixel format . yuv420p  (NÃO use 10-bit / HEVC Main10: o decoder pode falhar)
+· Resolução .... 1080x2280 (vertical) ou 1920x1080 (horizontal)
+                 O modo Preencher cobre a tela em qualquer proporção.
+· Duração ...... 6 a 20 s, com o primeiro e o último frame parecidos
+                 (MediaPlayer.isLooping = true faz o loop sem emenda visível)
+· Áudio ........ opcional; o app inicia com volume 0 (prefs.muteVideo = true)
+· Bitrate ...... 4 a 8 Mbps é suficiente; acima disso só esquenta o aparelho
+
+COMO GERAR UM LOOP SUAVE COM FFMPEG
+-----------------------------------
+ffmpeg -i entrada.mp4 -vf "scale=1080:2280:force_original_aspect_ratio=increase,\
+crop=1080:2280,fps=30" -c:v libx264 -profile:v high -pix_fmt yuv420p \
+-crf 23 -preset slow -movflags +faststart -an saida.mp4
+
+O arquivo precisa estar em assets (não em res/raw) para que
+AssetFileDescriptor.getFileDescriptor() + startOffset + length funcionem
+sem cópia para o cache — é o caminho de menor latência e menor uso de RAM.
+
+Os dois MP4 que acompanham o projeto foram gerados a partir dos próprios
+shaders GLSL (oxygen_ribbon.frag e ios_mesh.frag), em loop ping-pong, para
+que o caminho de vídeo e o caminho procedural tenham a mesma arte.

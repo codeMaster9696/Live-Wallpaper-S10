@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Paleta derivada dos três sistemas de origem -->
+    <color name="oneplus_red">#EB0028</color>
+    <color name="oneplus_red_hot">#FF2D46</color>
+    <color name="ios_indigo">#5E5CE6</color>
+    <color name="ios_blue">#0A84FF</color>
+    <color name="coloros_magenta">#FF3DCB</color>
+    <color name="amber">#FFB020</color>
+    <color name="acid">#A3FF3C</color>
+
+    <!-- Neutros: fundo, superfície, overlay, scrim -->
+    <color name="bg">#0B0A0F</color>
+    <color name="surface">#15131C</color>
+    <color name="surface_high">#1D1A26</color>
+    <color name="stroke">#2E2940</color>
+    <color name="text_primary">#F3EDE7</color>
+    <color name="text_muted">#9A93B0</color>
+    <color name="scrim">#B307060B</color>
+
+    <!-- Semânticos -->
+    <color name="success">#34E39B</color>
+    <color name="warning">#FFB020</color>
+    <color name="danger">#FF4D5E</color>
+    <color name="info">#4DA3FF</color>
+</resources>

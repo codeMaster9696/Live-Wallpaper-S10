@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Thumbnail mostrado pelo seletor de wallpapers do sistema. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:angle="315" android:startColor="#120608" android:centerColor="#5E1030" android:endColor="#0A0714" android:type="linear" />
+        </shape>
+    </item>
+    <item android:gravity="center">
+        <shape android:shape="oval">
+            <size android:width="120dp" android:height="120dp" />
+            <gradient android:type="radial" android:gradientRadius="60dp" android:startColor="#FFEB0028" android:endColor="#00EB0028" />
+        </shape>
+    </item>
+</layer-list>
