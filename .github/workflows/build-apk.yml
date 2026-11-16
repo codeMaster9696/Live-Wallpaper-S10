@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./AuroraHub # Diz ao GitHub onde o projeto está
+        working-directory: ./AuroraHub
 
     steps:
       - name: Checkout code
@@ -25,14 +25,13 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      # 🚨 Passo removido: não precisamos mais do 'chmod +x gradlew'
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
+      - name: Build debug APK with Gradle (no wrapper)
+        run: gradle assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: AuroraHub-debug-apk
-          path: AuroraHub/app/build/outputs/apk/debug/*.apk # Caminho ajustado
+          path: AuroraHub/app/build/outputs/apk/debug/*.apk
