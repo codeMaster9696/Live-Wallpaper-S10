@@ -1,6 +1,10 @@
 package com.hub.livewallpaper.service
 
 import android.app.WallpaperColors
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.os.Build
@@ -20,24 +24,6 @@ import com.hub.livewallpaper.render.RenderSession
  * =====================================================================
  *  HubWallpaperService — o live wallpaper do sistema.
  * =====================================================================
- *
- *  Ciclo de vida real observado no Galaxy S10 / One UI 4.1:
- *
- *    onCreate → onSurfaceCreated → onSurfaceChanged(1440x3040)
- *             → onVisibilityChanged(true) → onOffsetsChanged(...)
- *    [tela apaga]        onVisibilityChanged(false)   -> paramos o loop
- *    [tela acende]       onVisibilityChanged(true)    -> retomamos
- *    [troca de wallpaper] onSurfaceDestroyed → onSurfaceCreated
- *    [rotação]            onSurfaceChanged com W/H trocados
- *
- *  Regras que este Engine respeita à risca:
- *   1. NUNCA segurar o Surface depois de onSurfaceDestroyed (o sistema
- *      mata o processo se você desenhar em superfície abandonada).
- *   2. NUNCA renderizar com visibilidade false (drena bateria e a One UI
- *      pode marcar o app como "consumo alto em segundo plano").
- *   3. Recriar TODO o estado GL a cada Surface novo — não existe
- *      "contexto EGL sobrevivente" garantido entre superfícies.
- *   4. Ler preferências fora do loop; o listener empurra RenderConfig.
  */
 class HubWallpaperService : WallpaperService() {
 
@@ -56,11 +42,14 @@ class HubWallpaperService : WallpaperService() {
         private var surfaceH = 0
         private var powerSave = false
 
-        private val powerManager by lazy { getSystemService(PowerManager::class.java) }
+        private val powerManager by lazy { getSystemService(Context.POWER_SERVICE) as? PowerManager }
 
-        private val powerListener = PowerManager.OnPowerSaveModeChangedListener { mode ->
-            powerSave = mode
-            applyRunningState()
+        // CORREÇÃO: Substituído OnPowerSaveModeChangedListener (API 33+) por BroadcastReceiver
+        private val powerReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                powerSave = powerManager?.isPowerSaveMode == true
+                applyRunningState()
+            }
         }
 
         private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -74,11 +63,15 @@ class HubWallpaperService : WallpaperService() {
 
         override fun onCreate(surfaceHolder: SurfaceHolder) {
             super.onCreate(surfaceHolder)
-            // Não precisamos de toque: o launcher consome os gestos.
             setTouchEventsEnabled(false)
             powerSave = powerManager?.isPowerSaveMode == true
+            
             prefs.register(prefListener)
-            powerManager?.addOnPowerSaveModeChangedListener(powerListener)
+            
+            // CORREÇÃO: Registrar o BroadcastReceiver em vez da API nova
+            val filter = IntentFilter(Intent.ACTION_POWER_SAVE_MODE_CHANGED)
+            baseContext.registerReceiver(powerReceiver, filter)
+            
             Log.i(TAG, "Engine criado")
         }
 
@@ -93,8 +86,6 @@ class HubWallpaperService : WallpaperService() {
                 }
             }
             pushPreferences()
-            // O Surface já é válido aqui; usamos o tamanho conhecido (ou o
-            // desejado) e deixamos onSurfaceChanged corrigir em seguida.
             val frame = holder.surfaceFrame
             val w = if (frame.width() > 0) frame.width() else desiredMinimumWidth
             val h = if (frame.height() > 0) frame.height() else desiredMinimumHeight
@@ -109,16 +100,12 @@ class HubWallpaperService : WallpaperService() {
             surfaceW = width
             surfaceH = height
             val s = session ?: return
-            // Se o tamanho mudou de verdade (rotação / mudança de resolução
-            // WQHD+ -> FHD+ na One UI) recriamos a janela EGL: é mais seguro
-            // do que reaproveitar um buffer com dimensões antigas.
             s.attach(holder.surface, width, height)
             applyRunningState()
         }
 
         override fun onSurfaceRedrawNeeded(holder: SurfaceHolder) {
             super.onSurfaceRedrawNeeded(holder)
-            // O sistema pede um redesenho síncrono (ex.: voltou do AOD).
             session?.setRunning(visible && !isPausedByBattery())
         }
 
@@ -135,12 +122,6 @@ class HubWallpaperService : WallpaperService() {
             applyRunningState()
         }
 
-        /**
-         * Swipe entre páginas da tela inicial.
-         * xOffset: 0..1 (posição), xStep: quanto cada página anda.
-         * Alimentamos o paralaxe do renderizador — que só usa a folga
-         * criada pelo center-crop, então nunca aparece borda no swipe.
-         */
         override fun onOffsetsChanged(
             xOffset: Float, yOffset: Float,
             xOffsetStep: Float, yOffsetStep: Float,
@@ -157,10 +138,6 @@ class HubWallpaperService : WallpaperService() {
             Log.d(TAG, "desired ${desiredWidth}x${desiredHeight}")
         }
 
-        /**
-         * One UI 4.1 usa estas cores para tingir a UI do sistema a partir
-         * do wallpaper. Devolver a paleta real deixa o resultado coerente.
-         */
         @RequiresApi(Build.VERSION_CODES.O_MR1)
         override fun onComputeColors(): WallpaperColors? {
             val p = current?.palette ?: return null
@@ -171,7 +148,10 @@ class HubWallpaperService : WallpaperService() {
         override fun onDestroy() {
             super.onDestroy()
             prefs.unregister(prefListener)
-            powerManager?.removeOnPowerSaveModeChangedListener(powerListener)
+            
+            // CORREÇÃO: Desregistrar o BroadcastReceiver com segurança
+            runCatching { baseContext.unregisterReceiver(powerReceiver) }
+            
             session?.release()
             session = null
             mainHandler.removeCallbacksAndMessages(null)
@@ -190,7 +170,6 @@ class HubWallpaperService : WallpaperService() {
             session?.setRunning(run)
         }
 
-        /** Lê preferências (fora do loop) e empurra para a sessão ativa. */
         private fun pushPreferences() {
             val wp = Catalog.byId(baseContext, prefs.wallpaperId)
             if (current?.id != wp.id) {
