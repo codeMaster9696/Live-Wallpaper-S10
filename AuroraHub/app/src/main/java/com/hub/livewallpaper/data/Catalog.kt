@@ -2,6 +2,7 @@ package com.hub.livewallpaper.data
 
 import android.content.ContentUris
 import android.content.Context
+import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 
@@ -9,6 +10,8 @@ object Catalog {
 
     private const val TAG = "Catalog"
     const val VIDEO_DIR = "wallpapers"
+    // O nome da pasta que você vai criar dentro de "Movies" (Filmes) no celular
+    const val CUSTOM_FOLDER = "AuroraHub" 
 
     private val builtin: List<Wallpaper> = listOf(
         Wallpaper(
@@ -30,19 +33,31 @@ object Catalog {
     fun all(context: Context): List<Wallpaper> {
         val extras = mutableListOf<Wallpaper>()
 
-        // 1. Lê os vídeos que estão dentro do APK (assets)
+        // 1. Lê os vídeos de dentro do APK (CORRIGIDO: sem a palavra "assets/")
         try {
             val files = context.assets.list(VIDEO_DIR) ?: emptyArray()
             files.filter { it.endsWith(".mp4", ignoreCase = true) }.forEach { file ->
-                extras += createWallpaperFromFile(file, "assets/$VIDEO_DIR/$file")
+                extras += createWallpaperFromFile(file, "$VIDEO_DIR/$file")
             }
         } catch (t: Throwable) { Log.w(TAG, "Erro assets", t) }
 
-        // 2. Lê a galeria de vídeos do celular via MediaStore (Funciona em todas as versões)
+        // 2. Lê APENAS os vídeos da pasta "Movies/AuroraHub" do celular
         try {
             val projection = arrayOf(MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME)
+            
+            // Filtro para pegar apenas a pasta que queremos
+            val selection: String
+            val selectionArgs: Array<String>
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                selection = "${MediaStore.Video.Media.RELATIVE_PATH} LIKE ?"
+                selectionArgs = arrayOf("Movies/$CUSTOM_FOLDER%")
+            } else {
+                selection = "${MediaStore.Video.Media.DATA} LIKE ?"
+                selectionArgs = arrayOf("%Movies/$CUSTOM_FOLDER%")
+            }
+
             val cursor = context.contentResolver.query(
-                MediaStore.Video.Media.EXTERNAL_CONTENT_URI, projection, null, null, null
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI, projection, selection, selectionArgs, null
             )
             cursor?.use {
                 val idColumn = it.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
