@@ -23,7 +23,7 @@ object Catalog {
             kind = SourceKind.VIDEO,
             asset = "wallpapers/oxygen_ribbon.mp4",
             shader = "oxygen_ribbon",
-            palette = listOf(0xFF120608, 0xFFEB0028, 0xFFFF6A3D, 0xFFFFB020),
+            palette = listOf(0xFF120608.toInt(), 0xFFEB0028.toInt(), 0xFFFF6A3D.toInt(), 0xFFFFB020.toInt()),
             description = "Fitas de luz vermelha sobre grafite, no estilo do papel de parede padrão do OxygenOS 11.",
             defaultSpeed = 1f
         ),
@@ -33,7 +33,7 @@ object Catalog {
             origin = Origin.OXYGENOS,
             kind = SourceKind.PROCEDURAL,
             shader = "oxygen_aurora",
-            palette = listOf(0xFF05070A, 0xFF0B3B34, 0xFF34E39B, 0xFFA3FF3C),
+            palette = listOf(0xFF05070A.toInt(), 0xFF0B3B34.toInt(), 0xFF34E39B.toInt(), 0xFFA3FF3C.toInt()),
             description = "Cortinas de aurora verde-esmeralda com poeira de estrelas. Renderização procedural, zero MB de vídeo.",
             defaultSpeed = 0.8f
         ),
@@ -44,7 +44,7 @@ object Catalog {
             kind = SourceKind.VIDEO,
             asset = "wallpapers/ios_mesh.mp4",
             shader = "ios_mesh",
-            palette = listOf(0xFF0A0714, 0xFF5E5CE6, 0xFFFF3DCB, 0xFF0A84FF),
+            palette = listOf(0xFF0A0714.toInt(), 0xFF5E5CE6.toInt(), 0xFFFF3DCB.toInt(), 0xFF0A84FF.toInt()),
             description = "Malha de gradientes em movimento lento, como os wallpapers dinâmicos do iOS.",
             defaultSpeed = 0.9f
         ),
@@ -54,7 +54,7 @@ object Catalog {
             origin = Origin.IOS,
             kind = SourceKind.PROCEDURAL,
             shader = "ios_bloom",
-            palette = listOf(0xFF03060F, 0xFF0A84FF, 0xFF64D2FF, 0xFFFF375F),
+            palette = listOf(0xFF03060F.toInt(), 0xFF0A84FF.toInt(), 0xFF64D2FF.toInt(), 0xFFFF375F.toInt()),
             description = "Pétalas iridescentes abrindo em ciclo contínuo sobre azul profundo.",
             defaultSpeed = 0.7f
         ),
@@ -64,7 +64,7 @@ object Catalog {
             origin = Origin.COLOROS,
             kind = SourceKind.PROCEDURAL,
             shader = "coloros_silk",
-            palette = listOf(0xFF0B0512, 0xFFFF3DCB, 0xFF7C4DFF, 0xFF00E5FF),
+            palette = listOf(0xFF0B0512.toInt(), 0xFFFF3DCB.toInt(), 0xFF7C4DFF.toInt(), 0xFF00E5FF.toInt()),
             description = "Seda magenta e ciano dobrando-se com domain warping, assinatura visual do ColorOS 13.",
             defaultSpeed = 1f
         ),
@@ -74,7 +74,7 @@ object Catalog {
             origin = Origin.COLOROS,
             kind = SourceKind.PROCEDURAL,
             shader = "coloros_particles",
-            palette = listOf(0xFF0A0705, 0xFF6B3F12, 0xFFFFB020, 0xFFFFE7A3),
+            palette = listOf(0xFF0A0705.toInt(), 0xFF6B3F12.toInt(), 0xFFFFB020.toInt(), 0xFFFFE7A3.toInt()),
             description = "Bokeh dourado em três planos de profundidade, com deriva paralaxe entre as páginas da home.",
             defaultSpeed = 1f
         )
@@ -101,7 +101,7 @@ object Catalog {
                         kind = SourceKind.VIDEO,
                         asset = "$VIDEO_DIR/$file",
                         shader = null,
-                        palette = listOf(0xFF0B0A0F, 0xFF5E5CE6, 0xFFFF3DCB, 0xFFFFB020),
+                        palette = listOf(0xFF0B0A0F.toInt(), 0xFF5E5CE6.toInt(), 0xFFFF3DCB.toInt(), 0xFFFFB020.toInt()),
                         description = "Vídeo local adicionado em assets/$VIDEO_DIR/$file."
                     )
                 }
