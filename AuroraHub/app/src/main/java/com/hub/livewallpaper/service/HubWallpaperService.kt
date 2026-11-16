@@ -69,7 +69,7 @@ class HubWallpaperService : WallpaperService() {
             prefs.register(prefListener)
             
             // CORREÇÃO: Registrar o BroadcastReceiver em vez da API nova
-            val filter = IntentFilter(Intent.ACTION_POWER_SAVE_MODE_CHANGED)
+            val filter = IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
             baseContext.registerReceiver(powerReceiver, filter)
             
             Log.i(TAG, "Engine criado")
