@@ -9,24 +9,11 @@ import android.util.Log
 import com.hub.livewallpaper.service.HubWallpaperService
 
 /**
- * Aplicação do wallpaper no sistema — com verificação, não com "fé".
- *
- * Estratégia em duas etapas (tentativa + verificação):
- *
- *  1) tenta WallpaperManager.setWallpaperComponent() — troca sem UI.
- *     ATENÇÃO: esse método exige android.permission.SET_WALLPAPER_COMPONENT,
- *     que é signature|privileged. Em um APK instalado normalmente (nosso
- *     caso) o sistema lança SecurityException. Não declaramos a permissão
- *     no manifesto justamente porque ela nunca seria concedida.
- *
- *  2) com a exceção capturada, abrimos o fluxo OFICIAL:
- *     ACTION_CHANGE_LIVE_WALLPAPER + EXTRA_LIVE_WALLPAPER_COMPONENT.
- *     É o mesmo caminho que o Settings da One UI usa: abre a prévia do
- *     sistema já com o nosso serviço selecionado e o botão
- *     "Definir papel de parede" (o usuário escolhe inicial/bloqueio/ambas).
- *
- *  Ou seja: um toque no app + um toque de confirmação no sistema.
- *  Nenhum app de terceiros consegue pular essa confirmação sem root.
+ * Aplicação do wallpaper no sistema.
+ * 
+ * A tentativa de usar setWallpaperComponent() foi removida porque exige 
+ * permissões de sistema que um APK comum não possui (causando erro de compilação).
+ * Agora usamos o fluxo oficial via Intent, que abre a tela de prévia do Android.
  */
 object WallpaperApply {
 
@@ -45,25 +32,9 @@ object WallpaperApply {
     }
 
     fun apply(activity: Activity): Result {
-        val wm = WallpaperManager.getInstance(activity)
         val target = component(activity)
 
-        // ---- Etapa 1: caminho direto (só vinga em app de sistema/root) ----
-        try {
-            @Suppress("MissingPermission")
-            wm.setWallpaperComponent(target)
-            val info = wm.wallpaperInfo
-            if (info != null && info.component == target) {
-                Log.i(TAG, "aplicado diretamente")
-                return Result.Direct
-            }
-            Log.w(TAG, "setWallpaperComponent não pegou (info=${info?.component})")
-        } catch (t: Throwable) {
-            // Esperado em APK sideloaded: SecurityException.
-            Log.i(TAG, "caminho direto indisponível (${t.javaClass.simpleName}); usando o seletor do sistema")
-        }
-
-        // ---- Etapa 2: seletor do sistema ---------------------------------
+        // ---- Caminho Oficial: Abre o seletor do sistema -------------------
         val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
             putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, target)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
