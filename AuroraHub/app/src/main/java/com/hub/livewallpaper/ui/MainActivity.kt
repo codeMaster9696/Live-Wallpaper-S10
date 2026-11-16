@@ -1,10 +1,15 @@
 package com.hub.livewallpaper.ui
 
+import android.Manifest
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.snackbar.Snackbar
 import com.hub.livewallpaper.R
@@ -15,14 +20,6 @@ import com.hub.livewallpaper.data.Wallpaper
 import com.hub.livewallpaper.databinding.ActivityMainBinding
 import com.hub.livewallpaper.render.RenderSession
 
-/**
- * Galeria do hub: prévia ao vivo no topo + grade de wallpapers + barra
- * fixa de aplicação.
- *
- * A seleção é persistida IMEDIATAMENTE em SharedPreferences: é assim que o
- * WallpaperService (que roda em outro momento, possivelmente com esta
- * Activity já destruída) sabe o que renderizar.
- */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
@@ -43,14 +40,12 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         prefs = Prefs(this)
-        catalog = Catalog.all(this)
+        // catalog = Catalog.all(this) -> Movido para requestPermissionsIfNeeded
 
         adapter = WallpaperAdapter { wp -> select(wp, persist = true) }
         binding.grid.layoutManager = GridLayoutManager(this, 2)
         binding.grid.adapter = adapter
         binding.grid.setHasFixedSize(true)
-
-        binding.subtitle.text = getString(R.string.gallery_subtitle, catalog.size)
 
         binding.preview.onStats = { st -> showStats(st) }
         binding.preview.onVideoFallback = {
@@ -71,6 +66,31 @@ class MainActivity : AppCompatActivity() {
             if (pool.isNotEmpty()) select(pool.random(), persist = true)
         }
 
+        requestPermissionsIfNeeded()
+    }
+
+    private fun requestPermissionsIfNeeded() {
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_VIDEO
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+
+        if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(permission), 101)
+        } else {
+            loadCatalog()
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        loadCatalog() // Carrega o catálogo mesmo se negar (para mostrar os internos)
+    }
+
+    private fun loadCatalog() {
+        catalog = Catalog.all(this)
+        binding.subtitle.text = getString(R.string.gallery_subtitle, catalog.size)
         select(Catalog.byId(this, prefs.wallpaperId), persist = false)
         setFilter(null)
     }
@@ -87,8 +107,6 @@ class MainActivity : AppCompatActivity() {
         binding.preview.setPaused(true)
         prefs.unregister(prefListener)
     }
-
-    // ------------------------------------------------------------------
 
     private fun visibleList(): List<Wallpaper> =
         if (filter == null) catalog else catalog.filter { it.origin == filter }
