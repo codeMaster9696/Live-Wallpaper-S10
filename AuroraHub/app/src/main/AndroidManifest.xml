@@ -38,9 +38,7 @@
 
     <!-- Opcional: vídeos escolhidos pelo usuário fora de assets/.
          Em Android 13+ o acesso é granular por tipo de mídia. -->
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
+    
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
     <!-- O serviço de wallpaper NÃO precisa de foreground service,
