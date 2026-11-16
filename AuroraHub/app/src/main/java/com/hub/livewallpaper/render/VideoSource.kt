@@ -7,38 +7,15 @@ import android.media.AudioAttributes
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.media.PlaybackParams
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import android.view.Surface
 
-/**
- * =====================================================================
- *  Fonte de vídeo: MediaPlayer + SurfaceTexture, em loop, sem áudio.
- * =====================================================================
- *
- *  Por que SurfaceTexture e não holder.surface direto?
- *
- *  Entregar o Surface do holder ao MediaPlayer é o caminho "fácil", mas o
- *  enquadramento fica nas mãos do compositor: em vários aparelos ele faz
- *  CENTER_INSIDE e aparecem as bordas pretas. Além disso,
- *  setVideoScalingMode(SCALE_TO_FIT_WITH_CROPPING) só é honrado quando o
- *  destino é um SurfaceView de verdade — o que NÃO é o caso de um Engine
- *  de WallpaperService em todos os OEMs (a One UI 4.1 inclusa).
- *
- *  Com SurfaceTexture nós recebemos o frame como textura e fazemos o
- *  center-crop no fragment shader, com a matriz do próprio SurfaceTexture
- *  (que já corrige flip e rotação do decoder). O resultado é determinístico
- *  em qualquer aparelho: 100% da tela coberta, zero bordas.
- *
- *  Todo o ciclo de vida roda na RenderThread (que tem Looper), então os
- *  callbacks do MediaPlayer chegam na mesma thread que faz o GL.
- */
 class VideoSource(private val context: Context) {
 
     interface Callback {
-        /** Vídeo preparado: tamanho já corrigido pela rotação dos metadados. */
         fun onVideoReady(width: Int, height: Int)
-        /** Falha irrecuperável: o chamador deve cair no modo procedural. */
         fun onVideoFatal(message: String)
     }
 
@@ -57,25 +34,24 @@ class VideoSource(private val context: Context) {
 
     val isPrepared: Boolean get() = prepared
 
-    /**
-     * Abre um MP4 de assets/ e começa a decodificar para [st].
-     * @param assetPath ex.: "wallpapers/oxygen_ribbon.mp4"
-     */
     fun open(assetPath: String, st: SurfaceTexture, mute: Boolean, speed: Float, cb: Callback) {
         release()
         try {
-            val descriptor = context.assets.openFd(assetPath)
-            afd = descriptor
+            // Verifica se é um arquivo do celular (URI ou caminho absoluto) ou de dentro do APK
+            val isUri = assetPath.startsWith("content://") || assetPath.startsWith("file://") || assetPath.startsWith("/")
 
-            // Rotação: MediaPlayer.videoWidth devolve o tamanho CODIFICADO.
-            // Se o arquivo tem rotate=90 nos metadados, o quadro exibido é
-            // transposto — e a matemática do crop precisa saber disso.
             var rotation = 0
             var rawW = 0
             var rawH = 0
             try {
                 val mmr = MediaMetadataRetriever()
-                mmr.setDataSource(descriptor.fileDescriptor, descriptor.startOffset, descriptor.length)
+                if (isUri) {
+                    mmr.setDataSource(context, Uri.parse(assetPath))
+                } else {
+                    val descriptor = context.assets.openFd(assetPath)
+                    afd = descriptor
+                    mmr.setDataSource(descriptor.fileDescriptor, descriptor.startOffset, descriptor.length)
+                }
                 rotation = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
                 rawW = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
                 rawH = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
@@ -95,16 +71,20 @@ class VideoSource(private val context: Context) {
                     .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
                     .build()
             )
-            // offset + length OBRIGATÓRIOS: dentro do APK o asset pode estar
-            // deslocado no arquivo resources.arsc/assets concatenados.
-            mp.setDataSource(descriptor.fileDescriptor, descriptor.startOffset, descriptor.length)
+            
+            // Configura a fonte de dados corretamente
+            if (isUri) {
+                mp.setDataSource(context, Uri.parse(assetPath))
+            } else {
+                val descriptor = afd ?: context.assets.openFd(assetPath).also { afd = it }
+                mp.setDataSource(descriptor.fileDescriptor, descriptor.startOffset, descriptor.length)
+            }
+            
             mp.setSurface(surface)
             mp.isLooping = true
             mp.setVolume(if (mute) 0f else 0.5f, if (mute) 0f else 0.5f)
             appliedMute = mute
 
-            // Mantemos o modo de escala do framework coerente com o nosso
-            // shader (útil se o caminho direto ao Surface for usado).
             runCatching { mp.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING) }
 
             mp.setOnPreparedListener { m ->
@@ -114,24 +94,16 @@ class VideoSource(private val context: Context) {
                 val swap = rotation == 90 || rotation == 270
                 displayWidth = if (swap) h else w
                 displayHeight = if (swap) w else h
-                // O buffer do decoder continua no tamanho CODIFICADO;
-                // quem transpõe é a matriz do SurfaceTexture.
                 st.setDefaultBufferSize(maxOf(1, w), maxOf(1, h))
                 cb.onVideoReady(displayWidth, displayHeight)
                 if (wantPlaying) m.start()
                 applySpeed(speed)
-                Log.i(TAG, "pronto: ${displayWidth}x${displayHeight} rotate=$rotation loop=${m.isLooping}")
-            }
-
-            mp.setOnInfoListener { _, what, _ ->
-                if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) Log.d(TAG, "primeiro frame apresentado")
-                false
             }
 
             mp.setOnErrorListener { _, what, extra ->
                 Log.e(TAG, "MediaPlayer erro what=$what extra=$extra")
                 cb.onVideoFatal("MediaPlayer what=$what extra=$extra")
-                true // tratado: não chamar OnCompletion nem travar o processo
+                true
             }
 
             mp.prepareAsync()
@@ -141,12 +113,6 @@ class VideoSource(private val context: Context) {
         }
     }
 
-    /**
-     * Velocidade real de reprodução via PlaybackParams (API 23+).
-     * Alguns codecs da Samsung rejeitam speed != 1 com trilha de áudio;
-     * como o wallpaper é mudo por padrão, isso raramente acontece — e se
-     * acontecer, seguimos em 1x em vez de derrubar o wallpaper.
-     */
     fun applySpeed(speed: Float) {
         val mp = player ?: return
         if (!prepared) return
@@ -159,7 +125,6 @@ class VideoSource(private val context: Context) {
                 appliedSpeed = s
             }
         } catch (t: Throwable) {
-            Log.w(TAG, "PlaybackParams recusou speed=$s; mantendo 1x", t)
             appliedSpeed = 1f
         }
     }
@@ -171,7 +136,6 @@ class VideoSource(private val context: Context) {
         runCatching { mp.setVolume(if (mute) 0f else 0.5f, if (mute) 0f else 0.5f) }
     }
 
-    /** Pausa/retoma sem destruir o decoder (tela apagada, economia de bateria). */
     fun setPlaying(playing: Boolean) {
         wantPlaying = playing
         val mp = player ?: return
@@ -188,7 +152,6 @@ class VideoSource(private val context: Context) {
         player?.let { mp ->
             runCatching { mp.setOnPreparedListener(null) }
             runCatching { mp.setOnErrorListener(null) }
-            runCatching { mp.setOnInfoListener(null) }
             runCatching { if (mp.isPlaying) mp.stop() }
             runCatching { mp.setSurface(null) }
             runCatching { mp.reset() }
