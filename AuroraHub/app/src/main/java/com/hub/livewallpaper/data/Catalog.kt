@@ -1,14 +1,10 @@
 package com.hub.livewallpaper.data
 
+import android.content.ContentUris
 import android.content.Context
-import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
-import java.io.File
 
-/**
- * Catálogo do hub.
- * Lê os vídeos embutidos + vídeos locais das pastas Movies (Filmes) e Downloads.
- */
 object Catalog {
 
     private const val TAG = "Catalog"
@@ -42,27 +38,26 @@ object Catalog {
             }
         } catch (t: Throwable) { Log.w(TAG, "Erro assets", t) }
 
-        // 2. Lê a pasta Movies (Filmes) do celular
+        // 2. Lê a galeria de vídeos do celular via MediaStore (Funciona em todas as versões)
         try {
-            val moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
-            if (moviesDir.exists()) {
-                moviesDir.listFiles()?.filter { it.name.endsWith(".mp4", ignoreCase = true) }?.forEach { file ->
-                    extras += createWallpaperFromFile(file.name, file.absolutePath)
+            val projection = arrayOf(MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME)
+            val cursor = context.contentResolver.query(
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI, projection, null, null, null
+            )
+            cursor?.use {
+                val idColumn = it.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
+                val nameColumn = it.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
+                while (it.moveToNext()) {
+                    val id = it.getLong(idColumn)
+                    val name = it.getString(nameColumn)
+                    if (name.endsWith(".mp4", ignoreCase = true)) {
+                        val contentUri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
+                        extras += createWallpaperFromFile(name, contentUri.toString())
+                    }
                 }
             }
-        } catch (t: Throwable) { Log.w(TAG, "Erro Movies", t) }
+        } catch (t: Throwable) { Log.w(TAG, "Erro MediaStore", t) }
 
-        // 3. Lê a pasta Downloads do celular
-        try {
-            val downDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            if (downDir.exists()) {
-                downDir.listFiles()?.filter { it.name.endsWith(".mp4", ignoreCase = true) }?.forEach { file ->
-                    extras += createWallpaperFromFile(file.name, file.absolutePath)
-                }
-            }
-        } catch (t: Throwable) { Log.w(TAG, "Erro Downloads", t) }
-
-        // Remove duplicados (se o mesmo vídeo estiver em pastas diferentes)
         return (builtin + extras).distinctBy { it.id }
     }
 
@@ -70,9 +65,9 @@ object Catalog {
         return Wallpaper(
             id = "local_" + fileName.hashCode(),
             title = fileName.substringBeforeLast('.').replace('_', ' '),
-            origin = Origin.OXYGENOS, // Pode ser qualquer um, só para a tag colorida
+            origin = Origin.OXYGENOS,
             kind = SourceKind.VIDEO,
-            asset = path, // Aqui passamos o caminho do arquivo local
+            asset = path,
             shader = null,
             palette = listOf(0xFF0B0A0F.toInt(), 0xFF5E5CE6.toInt(), 0xFFFF3DCB.toInt(), 0xFFFFB020.toInt()),
             description = "Vídeo local: $fileName",
